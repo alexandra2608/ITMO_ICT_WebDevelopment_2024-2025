@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#django-web-framework" class="md-skip">
+        <a href="#django-rest-framework" class="md-skip">
           Skip to content
         </a>
       
@@ -717,6 +717,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#django" class="md-nav__link">
+    <span class="md-ellipsis">
+      Модели Django
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Эндпоинты
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Регистрация и авторизация
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -783,6 +810,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#django" class="md-nav__link">
+    <span class="md-ellipsis">
+      Модели Django
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Эндпоинты
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Регистрация и авторизация
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -803,7 +857,7 @@
                   
 
 
-<h1 id="django-web-framework">Django WEB Framework</h1>
+<h1 id="django-rest-framework">Django REST Framework</h1>
 <h2 id="django-djangorestframework">Реализация серверной части приложения средствами Django и DjangoRestFramework</h2>
 <p>Реализовать сайт, используя фреймворк Django 3, Django REST Framework, Djoser и
 СУБД в соответствии с вариантом задания лабораторной работы.</p>
@@ -811,13 +865,338 @@
 <ol>
 <li>Реализовать модель базы данных средствами DjangoORM (согласовать с
 преподавателем на консультации).</li>
-<li>Реализовать логику работу API средствами Django REST Framework (используя
+<li>Реализовать логику работы API средствами Django REST Framework (используя
 методы сериализации).</li>
 <li>Подключить регистрацию / авторизацию по токенам / вывод информации о текущем
 пользователе средствами Djoser.</li>
 </ol>
-<h4 id="_1">Модель БД</h4>
+<h3 id="_1">Модель БД</h3>
 <p><img alt="database" src="../images/img.png" /></p>
+<h3 id="django">Модели Django</h3>
+<pre><code class="language-python">from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.conf import settings
+
+# Create your models here.
+
+
+class User(AbstractUser):
+    bio = models.TextField(blank=True, null=True)
+    date_joined = models.DateTimeField(auto_now_add=True)
+
+    def str(self):
+        return self.username
+
+
+class Recipe(models.Model):
+    COMPLEXITY_CHOICES = [
+        ('easy', 'Легко'),
+        ('medium', 'Средне'),
+        ('hard', 'Трудно'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    instructions = models.TextField()
+    complexity = models.CharField(max_length=50, choices=COMPLEXITY_CHOICES)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='recipes', on_delete=models.CASCADE)
+    image_urls = models.URLField(blank=True, null=True)
+    video_url = models.URLField(blank=True, null=True)
+    average_rating = models.FloatField(default=0)
+
+    def str(self):
+        return self.title
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def str(self):
+        return self.name
+
+
+class RecipeTag(models.Model):
+    recipe = models.ForeignKey(Recipe, related_name='tags', on_delete=models.CASCADE)
+    tag = models.ForeignKey(Tag, related_name='recipes', on_delete=models.CASCADE)
+
+    def str(self):
+        return f'{self.recipe.title} - {self.tag.name}'
+
+
+class Comment(models.Model):
+    recipe = models.ForeignKey(Recipe, related_name='comments', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='comments', on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def str(self):
+        return f'Comment by {self.user.username} on {self.recipe.title}'
+
+
+class SavedRecipe(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='saved_recipes', on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, related_name='saved_by', on_delete=models.CASCADE)
+
+    def str(self):
+        return f'{self.user.username} saved {self.recipe.title}'
+
+
+class Subscription(models.Model):
+    subscriber = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='subscriptions', on_delete=models.CASCADE)
+    chef = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='subscribers', on_delete=models.CASCADE)
+
+    def str(self):
+        return f'{self.subscriber.username} follows {self.chef.username}'
+
+
+class Rating(models.Model):
+    recipe = models.ForeignKey(Recipe, related_name='ratings', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='ratings', on_delete=models.CASCADE)
+    rating_value = models.PositiveSmallIntegerField()
+
+    def str(self):
+        return f'Rating {self.rating_value} by {self.user.username} for {self.recipe.title}'
+</code></pre>
+<h3 id="_2">Эндпоинты</h3>
+<p>Для каждой модели была реализована логика работы API - CRUD-запросы.
+Пример views для СRUD-запросов модели Recipe:</p>
+<pre><code class="language-python"># Recipe Views
+class RecipeListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
+
+
+class RecipeRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
+</code></pre>
+<p><img alt="recipe-api" src="../images1/img_7.png" />
+<img alt="recipe-id" src="../images1/img_8.png" /></p>
+<p>Также были реализованы аналитические запросы:</p>
+<ul>
+<li>Получение списка подписчиков пользователя по его id</li>
+<li>Получение списка подписок пользователя по его id</li>
+<li>Получение списка сохранённых рецептов по id пользователя</li>
+<li>Получение всех оценок пользователя по его id</li>
+<li>Получение добавленных пользователем рецептов по его id</li>
+<li>Получение всех написанных пользователем комментариев по его id</li>
+<li>Получение всех рецептов, относящихся к конкретному тегу</li>
+<li>Получение всех комментариев к рецепту по id рецепта</li>
+<li>Получение всех оценок к рецепту по id рецепта</li>
+<li>Получение рецепта, к которому написан комментарий, по id комментария</li>
+<li>Получение оцененного рецепта по id оценки</li>
+</ul>
+<p>Views для аналитических запросов:</p>
+<pre><code class="language-python">class UserRecipesAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all recipes created by a specific user
+    &quot;&quot;&quot;
+    serializer_class = RecipeSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Recipe.objects.filter(author_id=user_id)
+
+
+class UserCommentsAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all comments written by a specific user
+    &quot;&quot;&quot;
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Comment.objects.filter(user_id=user_id)
+
+
+class UserSavedRecipesAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all saved recipes for a specific user
+    &quot;&quot;&quot;
+    serializer_class = SavedRecipeSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return SavedRecipe.objects.filter(user_id=user_id)
+
+
+class UserSubscriptionsAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all subscriptions for a specific user
+    &quot;&quot;&quot;
+    serializer_class = SubscriptionSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Subscription.objects.filter(subscriber_id=user_id)
+
+
+class UserSubscribersAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all subscribers of a specific user
+    &quot;&quot;&quot;
+    serializer_class = SubscriptionSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Subscription.objects.filter(chef_id=user_id)
+
+
+class UserRatingsAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all ratings given to a user's recipes
+    &quot;&quot;&quot;
+    serializer_class = RatingSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Rating.objects.filter(recipe__author_id=user_id)
+
+
+class RecipesByTagAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all recipes by a specific tag
+    &quot;&quot;&quot;
+    serializer_class = RecipeSerializer
+
+    def get_queryset(self):
+        tag_id = self.kwargs['tag_id']
+        return Recipe.objects.filter(tags__id=tag_id)
+
+
+class CommentsByRecipeAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all comments written to a specific recipe
+    &quot;&quot;&quot;
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        recipe_id = self.kwargs['recipe_id']
+        return Comment.objects.filter(recipe__id=recipe_id)
+
+
+class RatingsByRecipeAPIView(generics.ListAPIView):
+    &quot;&quot;&quot;
+    Get all ratings to specific recipe
+    &quot;&quot;&quot;
+
+    serializer_class = RatingSerializer
+
+    def get_queryset(self):
+        recipe_id = self.kwargs['recipe_id']
+        return Rating.objects.filter(recipe__id=recipe_id)
+
+
+class RecipeByCommentAPIView(generics.RetrieveAPIView):
+    &quot;&quot;&quot;
+    Get recipe by a comment
+    &quot;&quot;&quot;
+
+    serializer_class = RecipeSerializer
+
+    def get_object(self):
+        comment_id = self.kwargs['comment_id']
+        comment = Comment.objects.get(id=comment_id)
+        return comment.recipe
+</code></pre>
+<p>Пример работы аналитического запроса:
+<img alt="comments" src="../images1/img_9.png" /></p>
+<p>Все эндпоинты:</p>
+<pre><code class="language-python">from django.urls import path, include
+from .views import *
+
+app_name = &quot;recipes_app&quot;
+
+urlpatterns = [
+    path('auth/', include('djoser.urls')),
+    path('auth/', include('djoser.urls.authtoken')),
+
+    # User
+    path('users/', UserListCreateAPIView.as_view(), name='user-list-create'),
+    path('users/&lt;int:pk&gt;/', UserRetrieveUpdateDestroyAPIView.as_view(), name='user-detail'),
+    path('users/&lt;int:user_id&gt;/subscriptions/', UserSubscriptionsAPIView.as_view(), name='user-subscriptions'),
+    path('users/&lt;int:user_id&gt;/subscribers/', UserSubscribersAPIView.as_view(), name='user-subscribers'),
+    path('users/&lt;int:user_id&gt;/recipes/', UserRecipesAPIView.as_view(), name='user-recipes'),
+    path('users/&lt;int:user_id&gt;/saved-recipes/', UserSavedRecipesAPIView.as_view(), name='user-saved-recipes'),
+    path('users/&lt;int:user_id&gt;/comments/', UserCommentsAPIView.as_view(), name='user-comments'),
+    path('users/&lt;int:user_id&gt;/ratings/', UserRatingsAPIView.as_view(), name='user-ratings'),
+
+    # Recipe
+    path('recipes/', RecipeListCreateAPIView.as_view(), name='recipe-list-create'),
+    path('recipes/&lt;int:pk&gt;/', RecipeRetrieveUpdateDestroyAPIView.as_view(), name='recipe-detail'),
+    path('recipes/by-tag/&lt;int:tag_id&gt;/', RecipesByTagAPIView.as_view(), name='recipes-by-tag'),
+    path('recipes/by-comment/&lt;int:comment_id&gt;/', RecipeByCommentAPIView.as_view(), name='recipe-by-comment'),
+
+    # Tag
+    path('tags/', TagListCreateAPIView.as_view(), name='tag-list-create'),
+    path('tags/&lt;int:pk&gt;/', TagRetrieveUpdateDestroyAPIView.as_view(), name='tag-detail'),
+
+    # RecipeTag
+    path('recipe-tags/', RecipeTagListCreateAPIView.as_view(), name='recipetag-list-create'),
+    path('recipe-tags/&lt;int:pk&gt;/', RecipeTagRetrieveUpdateDestroyAPIView.as_view(), name='recipetag-detail'),
+
+    # Comment
+    path('comments/', CommentListCreateAPIView.as_view(), name='comment-list-create'),
+    path('comments/&lt;int:pk&gt;/', CommentRetrieveUpdateDestroyAPIView.as_view(), name='comment-detail'),
+    path('comments/by-recipe/&lt;int:recipe_id&gt;/', CommentsByRecipeAPIView.as_view(), name='comments-by-recipe'),
+
+    # SavedRecipe
+    path('saved-recipes/', SavedRecipeListCreateAPIView.as_view(), name='savedrecipe-list-create'),
+    path('saved-recipes/&lt;int:pk&gt;/', SavedRecipeRetrieveUpdateDestroyAPIView.as_view(), name='savedrecipe-detail'),
+
+    # Subscription
+    path('subscriptions/', SubscriptionListCreateAPIView.as_view(), name='subscription-list-create'),
+    path('subscriptions/&lt;int:pk&gt;/', SubscriptionRetrieveUpdateDestroyAPIView.as_view(), name='subscription-detail'),
+
+    # Rating
+    path('ratings/', RatingListCreateAPIView.as_view(), name='rating-list-create'),
+    path('ratings/&lt;int:pk&gt;/', RatingRetrieveUpdateDestroyAPIView.as_view(), name='rating-detail'),
+    path('ratings/by-recipe/&lt;int:recipe_id&gt;/', RatingsByRecipeAPIView.as_view(), name='ratings-by-recipe'),
+]
+
+</code></pre>
+<h3 id="_3">Регистрация и авторизация</h3>
+<p>Подключаем djoser:</p>
+<pre><code class="language-python">INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'djoser',
+    'recipes_app'
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
+    ),
+}
+</code></pre>
+<pre><code class="language-python">from django.contrib import admin
+from django.urls import path, include
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('recipes_app.urls')),
+]
+</code></pre>
+<p>Для того, чтобы запросы были доступны только авторизованному пользователю, нужно поменять rest_framework.permissions на IsAuthenticated.
+Далее устанавливаем postman и отправляем запрос на регистрацию:
+<img alt="register" src="../images1/img_10.png" /></p>
+<p>Авторизуем зарегистрированного пользователя и присваиваем ему токен:
+<img alt="auth" src="../images1/img_11.png" /></p>
+<p>Выводим информацию о текущем пользователе, отправив get-запрос на сервер.
+Для этого в headers запроса добавляем токен:
+<img alt="me" src="../images1/img_12.png" />
+<img alt="meme" src="../images1/img_13.png" /></p>
 
 
 

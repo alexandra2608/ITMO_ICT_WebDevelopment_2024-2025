@@ -948,7 +948,7 @@
 <img alt="red" src="../images/red.png" /></p>
 <p>Находим всех владельцев, чей год владения машиной начинается с 2018:</p>
 <pre><code class="language-python">owners_2018 = CarOwner.objects.filter(ownership__start_date__year=2018).distinct()
-&gt;&gt;&gt; print(owners_2010)
+&gt;&gt;&gt; print(owners_2018)
 &lt;QuerySet [&lt;CarOwner: owner4&gt;]&gt;
 &gt;&gt;&gt;
 </code></pre>
